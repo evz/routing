@@ -36,7 +36,7 @@ def route():
           FROM ways_vertices_pgr 
           ORDER BY the_geom <-> ST_SetSRID(ST_MakePoint(:end_x, :end_y), 4326) LIMIT 1
         ) AS id2, 
-          pgr_dijkstra('SELECT gid AS id, 
+          pgr_{0}('SELECT gid AS id, 
                           source::integer, 
                           target::integer, 
                           length::double precision AS cost 
