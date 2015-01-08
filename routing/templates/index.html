@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+{% block extra_styles %}
+<link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.css" />
+<link rel="stylesheet" href="{{ url_for('static', filename='css/leaflet.draw.css') }}" />
+<style>
+  #map-canvas {
+    height: 600px;
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="row">
+    <div class="col-sm-8">
+        <div id="map-canvas"></div>
+    </div>
+    <div id="info" class="col-sm-4"></div>
+</div>
+{% endblock %}
+{% block extra_javascript %}
+<script src="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.js"></script>
+<script src="{{ url_for('static', filename='js/leaflet.draw.js') }}"></script>
+<script type="text/javascript">
+    var map;
+    var drawnItems = new L.FeatureGroup();
+    var routeItems = new L.FeatureGroup();
+    $(document).ready(function(){
+        map = L.map('map-canvas', {
+            center: [41.83887416186901, -87.87139892578125],
+            zoom: 9,
+            scrollWheelZoom: false
+        });
+        L.tileLayer('http://{s}.tile.stamen.com/toner/{z}/{x}/{y}.png',{
+            attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>',
+            detectRetina: true
+        }).addTo(map);
+        map.addLayer(drawnItems);
+        map.addLayer(routeItems);
+        var drawControl = new L.Control.Draw({
+            edit: {
+                featureGroup: drawnItems,
+            },
+            draw: {
+                polygon: false,
+                circle: false,
+                polyline: false,
+                rectangle: false
+            }
+        });
+        map.addControl(drawControl);
+        map.on('draw:created', function(e){
+            if(drawnItems.getLayers().length < 2){
+                drawnItems.addLayer(e.layer);
+            }
+            if(drawnItems.getLayers().length == 2){
+                var points = []
+                drawnItems.eachLayer(function(layer){
+                    points.push(layer.toGeoJSON()['geometry']['coordinates'].join(','));
+                });
+                $.when(getRoute(points[0], points[1])).then(
+                    function(data){
+                        routeItems.addLayer(L.geoJson(data));
+                        map.fitBounds(routeItems.getBounds())
+                    }
+                )
+            }
+        })
+        map.on('draw:edited', function(e){
+            var layers = e.layers;
+            console.log('edited');
+            console.log(layers);
+        })
+        map.on('draw:deleted', function(e){
+            e.layers.eachLayer(function(layer){
+                drawnItems.removeLayer(layer);
+            });
+        });
+    });
+    function getRoute(start, end){
+        return $.getJSON('/route/', {'start': start, 'end': end})
+    }
+</script>
+{% endblock %}
